@@ -2,6 +2,8 @@
 
 A CLI and interactive TUI to switch between Alacritty themes.
 
+![demo](https://github.com/user-attachments/assets/a9676beb-6da9-4d71-b3d1-8c70addb2bb2)
+
 [![Crates.io](https://img.shields.io/crates/v/althemer.svg)](https://crates.io/crates/althemer)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -77,6 +79,7 @@ althemer -c /path/to/config    # Custom config file location
 ```bash
 althemer list
 ```
+![list demo](https://github.com/user-attachments/assets/2e691761-9ab8-4e7e-be44-983ab7a8672e)
 
 ### Check current theme
 
