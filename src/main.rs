@@ -1,6 +1,7 @@
 use clap::CommandFactory;
 use std::{path::PathBuf, process};
 
+use alacritty::get_alacritty_config_path;
 use clap::Parser;
 use cli::{Cli, Commands};
 use config::AlthemerConfig;
@@ -33,26 +34,30 @@ fn run() -> Result<()> {
 
     let config = AlthemerConfig::new(&cli)?;
     let themes_path = cli.themes.as_deref().or(config.themes_dir.as_deref());
+    let alacritty_config = get_alacritty_config_path(
+        cli.alacritty_config.as_deref(),
+        config.alacritty_config.as_deref(),
+    )?;
 
     match cli.command {
         // directly run the tui if no args are passed
-        None => ratatui::run(|term| App::new(themes_path, &config).run(term))
+        None => ratatui::run(|term| App::new(themes_path, &config, &alacritty_config).run(term))
             .map_err(|e| AlthemerError::InteractiveError(e.to_string()))?,
         // otherwise handle subcommands
-        Some(Commands::List) => match select_theme(themes_path, &config) {
+        Some(Commands::List) => match select_theme(themes_path, &config, &alacritty_config) {
             Ok(t) => {
-                let theme = switch_theme(&t.name, themes_path)?;
+                let theme = switch_theme(&t.name, themes_path, &alacritty_config)?;
                 println!("✓ Switched to theme: {}", theme.name);
             }
             Err(AlthemerError::NoTerminal) => {
-                let themes = list_themes(themes_path)?;
+                let themes = list_themes(themes_path, &alacritty_config)?;
                 for theme in themes {
                     println!("{}", theme.name);
                 }
             }
             Err(e) => return Err(e),
         },
-        Some(Commands::Current) => match get_current_theme(themes_path) {
+        Some(Commands::Current) => match get_current_theme(themes_path, &alacritty_config) {
             Ok(Some(theme)) => {
                 println!("Current theme: {}", theme.name);
             }
@@ -62,7 +67,7 @@ fn run() -> Result<()> {
             Err(err) => return Err(err),
         },
         Some(Commands::Switch { theme }) => {
-            let theme = switch_theme(&theme, themes_path)?;
+            let theme = switch_theme(&theme, themes_path, &alacritty_config)?;
             println!("✓ Switched to theme: {}", theme.name);
         }
         Some(Commands::Download {
@@ -106,8 +111,8 @@ fn run() -> Result<()> {
                 .map_err(|e| AlthemerError::ConfigurationError(e.to_string()))?;
 
             if themes_dir.is_empty() && config.themes_dir.is_none() {
-                if let Some(path) = dirs::config_dir() {
-                    config.themes_dir = Some(path.join("alacritty").join("themes"));
+                if let Some(path) = alacritty_config.parent() {
+                    config.themes_dir = Some(path.join("themes"));
                 }
             } else if !themes_dir.is_empty() {
                 config.themes_dir = Some(PathBuf::from(&themes_dir));

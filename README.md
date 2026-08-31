@@ -70,8 +70,9 @@ althemer
 ### Global CLI flags
 
 ```bash
-althemer -t /path/to/themes    # Custom themes directory
-althemer -c /path/to/config    # Custom config file location
+althemer -t /path/to/themes             # Custom themes directory
+althemer -c /path/to/config             # Custom config file location
+althemer -a /path/to/alacritty.toml     # Custom alacritty config file
 ```
 
 ### List all themes and quick switch
@@ -110,7 +111,14 @@ althemer download -f
 Althemer looks for themes in:
 
 1. `--themes` / `-t` CLI argument
-2. `themes_dir` in config file (default: `~/.config/alacritty/themes`)
+2. `themes_dir` in config file (default: the `themes` directory next to the alacritty config)
+
+And for the alacritty config file in:
+
+1. `--alacritty-config` / `-a` CLI argument
+2. `ALTHEMER_ALACRITTY_CONFIG` environment variable
+3. `alacritty_config` in config file
+4. `~/.config/alacritty/alacritty.toml` (on macOS: `~/Library/Application Support/alacritty/alacritty.toml`)
 
 ### Config file
 
@@ -119,6 +127,7 @@ Default location: `~/.config/althemer/config.json`
 ```json
 {
   "themes_dir": "/home/xdagiz/.config/alacritty/themes",
+  "alacritty_config": "/home/xdagiz/.config/alacritty/alacritty.toml",
   "show_preview": true,
   "quit_on_select": false,
   "picker_reversed": false,
@@ -131,6 +140,7 @@ Default location: `~/.config/althemer/config.json`
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `themes_dir` | string | `~/.config/alacritty/themes` | Path to directory containing `.toml` theme files |
+| `alacritty_config` | string | `~/.config/alacritty/alacritty.toml` | Path to the alacritty config file to rewrite |
 | `show_preview` | bool | `true` | Show color palette preview in TUI |
 | `quit_on_select` | bool | `false` | Exit TUI after applying a theme |
 | `picker_reversed` | bool | `false` | Reverse the picker display order |

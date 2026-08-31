@@ -1,5 +1,5 @@
 use crate::{
-    alacritty::get_themes_dir,
+    alacritty::{get_alacritty_config_path, get_themes_dir},
     cli::Cli,
     error::{AlthemerError, Result},
 };
@@ -13,8 +13,11 @@ use std::{
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct AlthemerConfig {
-    #[serde(default = "default_themes_dir")]
+    #[serde(default)]
     pub themes_dir: Option<PathBuf>,
+
+    #[serde(default)]
+    pub alacritty_config: Option<PathBuf>,
 
     #[serde(default = "default_show_preview")]
     pub show_preview: bool,
@@ -36,6 +39,7 @@ impl Default for AlthemerConfig {
     fn default() -> Self {
         Self {
             themes_dir: default_themes_dir(),
+            alacritty_config: None,
             show_preview: default_show_preview(),
             quit_on_select: default_quit_on_select(),
             picker_reversed: default_picker_reversed(),
@@ -62,7 +66,9 @@ fn default_picker_sort_results() -> bool {
 }
 
 fn default_themes_dir() -> Option<PathBuf> {
-    if let Ok(p) = get_themes_dir(None) {
+    let alacritty_config = get_alacritty_config_path(None, None).ok()?;
+
+    if let Ok(p) = get_themes_dir(None, &alacritty_config) {
         return Some(p);
     }
 
@@ -98,6 +104,15 @@ impl AlthemerConfig {
             } else {
                 config.config_path = get_config_path();
             }
+        }
+
+        // Themes live next to the alacritty config unless configured otherwise.
+        if config.themes_dir.is_none() {
+            let alacritty_config = get_alacritty_config_path(
+                cli.alacritty_config.as_deref(),
+                config.alacritty_config.as_deref(),
+            )?;
+            config.themes_dir = get_themes_dir(None, &alacritty_config).ok();
         }
 
         Ok(config)
