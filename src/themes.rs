@@ -2,7 +2,7 @@ use ratatui::style::Color;
 use relative_luminance::{Luminance, Rgb};
 use serde::Deserialize;
 
-use crate::alacritty::{get_alacritty_config_path, get_themes_dir, read_config};
+use crate::alacritty::{get_themes_dir, read_config};
 use crate::error::{AlthemerError, Result};
 use std::path::{Path, PathBuf};
 
@@ -245,8 +245,8 @@ impl Theme {
     }
 }
 
-pub fn list_themes(custom_path: Option<&Path>) -> Result<Vec<Theme>> {
-    let themes_dir = get_themes_dir(custom_path)?;
+pub fn list_themes(custom_path: Option<&Path>, alacritty_config: &Path) -> Result<Vec<Theme>> {
+    let themes_dir = get_themes_dir(custom_path, alacritty_config)?;
 
     let mut themes = std::fs::read_dir(themes_dir)?
         .filter_map(|entry| entry.ok())
@@ -259,29 +259,36 @@ pub fn list_themes(custom_path: Option<&Path>) -> Result<Vec<Theme>> {
     Ok(themes)
 }
 
-pub fn get_current_theme_path() -> Result<Option<PathBuf>> {
-    let config_path = get_alacritty_config_path()?;
-
-    if !config_path.exists() {
-        return Err(AlthemerError::ConfigNotFound(config_path));
+pub fn get_current_theme_path(alacritty_config: &Path) -> Result<Option<PathBuf>> {
+    if !alacritty_config.exists() {
+        return Err(AlthemerError::ConfigNotFound(
+            alacritty_config.to_path_buf(),
+        ));
     }
 
-    let config = read_config(&config_path)?;
+    let config = read_config(alacritty_config)?;
 
     Ok(config.general.import.first().map(PathBuf::from))
 }
 
-pub fn get_current_theme(custom_path: Option<&Path>) -> Result<Option<Theme>> {
-    let Some(theme_path) = get_current_theme_path()? else {
+pub fn get_current_theme(
+    custom_path: Option<&Path>,
+    alacritty_config: &Path,
+) -> Result<Option<Theme>> {
+    let Some(theme_path) = get_current_theme_path(alacritty_config)? else {
         return Ok(None);
     };
-    let themes = list_themes(custom_path)?;
+    let themes = list_themes(custom_path, alacritty_config)?;
 
     Ok(themes.into_iter().find(|t| t.path == theme_path))
 }
 
-pub fn get_theme_by_name(name: &str, custom_path: Option<&Path>) -> Result<Theme> {
-    let themes = list_themes(custom_path)?;
+pub fn get_theme_by_name(
+    name: &str,
+    custom_path: Option<&Path>,
+    alacritty_config: &Path,
+) -> Result<Theme> {
+    let themes = list_themes(custom_path, alacritty_config)?;
     let name_lower = name.to_lowercase();
 
     themes
@@ -295,6 +302,10 @@ mod tests {
     use super::*;
     use std::fs;
     use tempfile::TempDir;
+
+    fn alacritty_config(dir: &TempDir) -> PathBuf {
+        dir.path().join("alacritty.toml")
+    }
 
     fn create_temp_dir(files: &[&str]) -> TempDir {
         let dir = tempfile::tempdir().expect("Failed to create temp dir");
@@ -345,7 +356,8 @@ mod tests {
         fs::write(dir.path().join("readme.txt"), "").expect("Failed to write file");
         fs::write(dir.path().join("config.yml"), "").expect("Failed to write file");
 
-        let themes = list_themes(Some(dir.path())).expect("Should list themes");
+        let themes =
+            list_themes(Some(dir.path()), &alacritty_config(&dir)).expect("Should list themes");
 
         assert_eq!(themes.len(), 1);
         assert_eq!(themes[0].name, "valid");
@@ -355,7 +367,7 @@ mod tests {
     fn get_theme_by_name_exact_match() {
         let dir = create_temp_dir(&["dracula", "nord", "gruvbox"]);
 
-        let result = get_theme_by_name("dracula", Some(dir.path()));
+        let result = get_theme_by_name("dracula", Some(dir.path()), &alacritty_config(&dir));
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap().name, "dracula");
@@ -365,7 +377,7 @@ mod tests {
     fn get_theme_by_name_case_insensitive() {
         let dir = create_temp_dir(&["Dracula", "Nord"]);
 
-        let result = get_theme_by_name("dracula", Some(dir.path()));
+        let result = get_theme_by_name("dracula", Some(dir.path()), &alacritty_config(&dir));
 
         assert!(result.is_ok());
         assert_eq!(result.unwrap().name, "Dracula");
@@ -375,7 +387,7 @@ mod tests {
     fn get_theme_by_name_not_found() {
         let dir = create_temp_dir(&["dracula"]);
 
-        let result = get_theme_by_name("nonexistent", Some(dir.path()));
+        let result = get_theme_by_name("nonexistent", Some(dir.path()), &alacritty_config(&dir));
 
         assert!(result.is_err());
         let err = result.unwrap_err();

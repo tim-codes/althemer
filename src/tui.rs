@@ -1,3 +1,4 @@
+use crate::alacritty::get_alacritty_config_path;
 use crate::config::AlthemerConfig;
 use crate::switcher::switch_theme;
 use crate::themes::{Theme, ThemeCategory, ThemeColors, get_current_theme_path, list_themes};
@@ -36,6 +37,7 @@ pub struct App {
     themes: ThemesList,
     status_message: Option<StatusMessage>,
     custom_themes_path: Option<PathBuf>,
+    alacritty_config: PathBuf,
     input_mode: InputMode,
     filter_input: String,
     character_index: usize,
@@ -66,13 +68,18 @@ enum StatusMessage {
 
 impl Default for App {
     fn default() -> Self {
-        Self::new(None, &AlthemerConfig::default())
+        let alacritty_config = get_alacritty_config_path(None, None).unwrap_or_default();
+        Self::new(None, &AlthemerConfig::default(), &alacritty_config)
     }
 }
 
 impl App {
-    pub fn new(custom_themes_path: Option<&Path>, config: &AlthemerConfig) -> Self {
-        let (items, status_message) = match list_themes(custom_themes_path) {
+    pub fn new(
+        custom_themes_path: Option<&Path>,
+        config: &AlthemerConfig,
+        alacritty_config: &Path,
+    ) -> Self {
+        let (items, status_message) = match list_themes(custom_themes_path, alacritty_config) {
             Ok(items) if items.is_empty() => (
                 items,
                 Some(StatusMessage::Info("No themes found".to_string())),
@@ -84,7 +91,7 @@ impl App {
             ),
         };
 
-        let current_theme_path = get_current_theme_path().ok().flatten();
+        let current_theme_path = get_current_theme_path(alacritty_config).ok().flatten();
         let filtered_indices = items
             .iter()
             .enumerate()
@@ -102,6 +109,7 @@ impl App {
             },
             status_message,
             custom_themes_path: custom_themes_path.map(Path::to_path_buf),
+            alacritty_config: alacritty_config.to_path_buf(),
             input_mode: InputMode::Normal,
             filter_input: String::new(),
             character_index: 0,
@@ -425,7 +433,11 @@ impl App {
             return;
         };
 
-        match switch_theme(&theme.name, self.custom_themes_path.as_deref()) {
+        match switch_theme(
+            &theme.name,
+            self.custom_themes_path.as_deref(),
+            &self.alacritty_config,
+        ) {
             Ok(applied) => {
                 self.current_theme_path = Some(applied.path);
                 self.status_message = Some(StatusMessage::Info(format!(

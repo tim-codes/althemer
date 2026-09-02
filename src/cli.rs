@@ -15,6 +15,10 @@ pub struct Cli {
     #[arg(long, short, global = true)]
     pub themes: Option<PathBuf>,
 
+    /// Path to the alacritty config file [default: ~/.config/alacritty/alacritty.toml]
+    #[arg(long, short, global = true)]
+    pub alacritty_config: Option<PathBuf>,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
