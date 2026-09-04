@@ -122,17 +122,15 @@ And for the alacritty config file in:
 
 ### Config file
 
-Althemer looks for its own config file in:
+Passing `--config` / `-c` skips the search. If that file is missing or broken, althemer stops with an error.
 
-1. `--config` / `-c` CLI argument
-2. `$XDG_CONFIG_HOME/althemer/config.json` (if `XDG_CONFIG_HOME` is set)
-3. `~/.config/althemer/config.json`
-4. `<platform config dir>/althemer/config.json` (on macOS: `~/Library/Application Support/althemer/config.json`)
+Without the flag, althemer checks in order:
 
-The first of these that exists wins, so existing installs keep working. If none
-exists yet, the config is created at the highest-priority location:
-`$XDG_CONFIG_HOME/althemer/config.json` when `XDG_CONFIG_HOME` is set, otherwise
-`~/.config/althemer/config.json`.
+1. `$XDG_CONFIG_HOME/althemer/config.json` (if `XDG_CONFIG_HOME` is set to an absolute path)
+2. `~/.config/althemer/config.json`
+3. `<platform config dir>/althemer/config.json` (on macOS: `~/Library/Application Support/althemer/config.json`)
+
+Althemer reads the first path that exists, so a macOS install under Application Support keeps working. With no config on disk, althemer writes a new one to the first spot in the list.
 
 ```json
 {

@@ -116,10 +116,14 @@ fn resolve_config_path(
 }
 
 /// Same as [`resolve_config_path`], reading the environment and filesystem itself.
+fn xdg_config_home(var: Option<std::ffi::OsString>) -> Option<PathBuf> {
+    var.filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+}
+
 pub fn get_config_path() -> Option<PathBuf> {
-    let xdg_config_home = std::env::var_os(XDG_CONFIG_HOME_ENV)
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from);
+    let xdg_config_home = xdg_config_home(std::env::var_os(XDG_CONFIG_HOME_ENV));
 
     resolve_config_path(
         xdg_config_home.as_deref(),
@@ -243,7 +247,6 @@ mod tests {
             exists_in(&[xdg_file(), dot_config_file(), platform_file()]),
         )
         .unwrap();
-
         assert_eq!(path, xdg_file());
     }
 
@@ -256,7 +259,6 @@ mod tests {
             exists_in(&[dot_config_file(), platform_file()]),
         )
         .unwrap();
-
         assert_eq!(path, dot_config_file());
     }
 
@@ -269,7 +271,6 @@ mod tests {
             exists_in(&[dot_config_file()]),
         )
         .unwrap();
-
         assert_eq!(path, dot_config_file());
     }
 
@@ -326,9 +327,48 @@ mod tests {
     }
 
     #[test]
+    fn relative_xdg_config_home_is_ignored_for_existing_files() {
+        let xdg = xdg_config_home(Some(std::ffi::OsString::from("relative/path")));
+        let path = resolve_config_path(
+            xdg.as_deref(),
+            Some(Path::new(HOME)),
+            Some(Path::new(PLATFORM)),
+            exists_in(&[dot_config_file()]),
+        )
+        .unwrap();
+        assert_eq!(path, dot_config_file());
+    }
+
+    #[test]
+    fn relative_xdg_config_home_is_ignored_for_creation_target() {
+        let xdg = xdg_config_home(Some(std::ffi::OsString::from("relative/path")));
+        let path = resolve_config_path(
+            xdg.as_deref(),
+            Some(Path::new(HOME)),
+            Some(Path::new(PLATFORM)),
+            exists_in(&[]),
+        )
+        .unwrap();
+        assert_eq!(path, dot_config_file());
+    }
+
+    #[test]
+    fn absolute_xdg_config_home_is_kept() {
+        let xdg = xdg_config_home(Some(std::ffi::OsString::from(XDG)));
+        assert_eq!(xdg, Some(xdg_file()));
+    }
+
+    #[test]
+    fn empty_xdg_config_home_is_ignored() {
+        let xdg = xdg_config_home(Some(std::ffi::OsString::from("")));
+        assert!(xdg.is_none());
+    }
+
+    #[test]
     fn existing_file_on_disk_is_detected() {
         let dir = tempfile::tempdir().unwrap();
         let config_file = althemer_config_file(dir.path());
+
         std::fs::create_dir_all(config_file.parent().unwrap()).unwrap();
         std::fs::write(&config_file, "{}").unwrap();
 
@@ -339,7 +379,6 @@ mod tests {
             |path: &Path| path.exists(),
         )
         .unwrap();
-
         assert_eq!(path, config_file);
     }
 }
